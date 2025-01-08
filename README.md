@@ -1,6 +1,6 @@
 # DepthAnything-ROS
 
-This is a Fork of [DepthAnything-ROS][https://github.com/scepter914/DepthAnything-ROS] trying to optimize it for multiple camera streams.
+This is a Fork of [DepthAnything-ROS](https://github.com/scepter914/DepthAnything-ROS) trying to optimize it for multiple camera streams.
 
 `DepthAnything-ROS` is a ROS2 wrapper for [Depth-Anything](https://github.com/LiheYoung/Depth-Anything).
 
