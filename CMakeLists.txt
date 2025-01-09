@@ -23,7 +23,7 @@ find_package(CUDA REQUIRED)
 if(CMAKE_CUDA_COMPILER)
   enable_language(CUDA)
 else()
-  message(WARNING "CUDA is not found. preprocess acceleration using CUDA will not be available.")
+  message(WARNING "CUDA is not found. Preprocess acceleration using CUDA will not be available.")
 endif()
 
 if(CUDA_FOUND)
@@ -31,13 +31,11 @@ if(CUDA_FOUND)
     ${CUDA_TOOLKIT_ROOT_DIR}/lib64
     ${CUDA_TOOLKIT_ROOT_DIR}/lib
   )
-
   if(CUDA_VERBOSE)
     message(STATUS "CUDA is available!")
     message(STATUS "CUDA Libs: ${CUDA_LIBRARIES}")
     message(STATUS "CUDA Headers: ${CUDA_INCLUDE_DIRS}")
   endif()
-
   set(CUDA_AVAIL ON)
 else()
   message(STATUS "CUDA NOT FOUND")
@@ -53,21 +51,19 @@ if(NVINFER AND NVONNXPARSER AND NVINFER_PLUGIN)
   if(CUDA_VERBOSE)
     message(STATUS "TensorRT is available!")
     message(STATUS "NVINFER: ${NVINFER}")
-    message(STATUS "NVPARSERS: ${NVPARSERS}")
     message(STATUS "NVINFER_PLUGIN: ${NVINFER_PLUGIN}")
     message(STATUS "NVONNXPARSER: ${NVONNXPARSER}")
   endif()
-
   set(TRT_AVAIL ON)
 else()
   message(STATUS "TensorRT is NOT Available")
   set(TRT_AVAIL OFF)
 endif()
 
-# try to find the CUDNN module
+# Try to find CUDNN
 find_library(CUDNN_LIBRARY
-  NAMES libcudnn.so${__cudnn_ver_suffix} libcudnn${__cudnn_ver_suffix}.dylib ${__cudnn_lib_win_name}
-  PATHS $ENV{LD_LIBRARY_PATH} ${__libpath_cudart} ${CUDNN_ROOT_DIR} ${PC_CUDNN_LIBRARY_DIRS} ${CMAKE_INSTALL_PREFIX}
+  NAMES libcudnn.so libcudnn.dylib
+  PATHS $ENV{LD_LIBRARY_PATH} ${CUDA_TOOLKIT_ROOT_DIR} ${CMAKE_INSTALL_PREFIX}
   PATH_SUFFIXES lib lib64 bin
   DOC "CUDNN library."
 )
@@ -77,7 +73,6 @@ if(CUDNN_LIBRARY)
     message(STATUS "CUDNN is available!")
     message(STATUS "CUDNN_LIBRARY: ${CUDNN_LIBRARY}")
   endif()
-
   set(CUDNN_AVAIL ON)
 else()
   message(STATUS "CUDNN is NOT Available")
@@ -88,20 +83,25 @@ endif()
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
-# Targets
+########################################
+## Include dirs for external libraries
+########################################
 include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${CUDA_INCLUDE_DIRS}
 )
 
-ament_auto_add_library(depth_anything_node_component SHARED
-  src/depth_anything_node/depth_anything_node.cpp
+#
+# 1) Create a library for the shared TensorRT code
+#    (so it doesn't get compiled multiple times).
+#
+ament_auto_add_library(tensorrt_depth_anything_lib SHARED
   src/tensorrt_depth_anything/tensorrt_depth_anything.cpp
   src/tensorrt_common/tensorrt_common.cpp
   src/tensorrt_common/simple_profiler.cpp
 )
 
-target_link_libraries(depth_anything_node_component
+target_link_libraries(tensorrt_depth_anything_lib
   ${NVINFER}
   ${NVINFER_PLUGIN}
   ${NVONNXPARSER}
@@ -110,12 +110,45 @@ target_link_libraries(depth_anything_node_component
   ${CUDNN_LIBRARY}
 )
 
+########################################
+# 2) Single-camera node component
+########################################
+ament_auto_add_library(depth_anything_node_component SHARED
+  src/depth_anything_node/depth_anything_node.cpp
+)
+
+target_link_libraries(depth_anything_node_component
+  tensorrt_depth_anything_lib
+  ${OpenCV_LIBS}
+)
+
 rclcpp_components_register_node(depth_anything_node_component
   PLUGIN "depth_anything::DepthAnythingNode"
   EXECUTABLE depth_anything_node
 )
 
+########################################
+# 3) Multi-camera node component
+#    (new MultiDepthAnythingNode)
+########################################
+ament_auto_add_library(multi_depth_anything_node_component SHARED
+  # Adjust the path to match wherever you placed your new node source file
+  src/depth_anything_node/multi_depth_anything_node.cpp
+)
+
+target_link_libraries(multi_depth_anything_node_component
+  tensorrt_depth_anything_lib
+  ${OpenCV_LIBS}
+)
+
+rclcpp_components_register_node(multi_depth_anything_node_component
+  PLUGIN "depth_anything::MultiDepthAnythingNode"
+  EXECUTABLE multi_depth_anything_node
+)
+
+#
 # Tests
+#
 if(BUILD_TESTING)
   list(APPEND AMENT_LINT_AUTO_EXCLUDE ament_cmake_uncrustify)
 
@@ -123,10 +156,13 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
+#
 # Package
+#
 ament_auto_package(
   INSTALL_TO_SHARE
   data
   config
   launch
 )
+
