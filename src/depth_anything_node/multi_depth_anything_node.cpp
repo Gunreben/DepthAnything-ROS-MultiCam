@@ -23,7 +23,7 @@ namespace depth_anything
 {
 
 MultiDepthAnythingNode::MultiDepthAnythingNode(const rclcpp::NodeOptions & options)
-: Node("multi_depth_anything_node", options)
+: Node("multi_depth_anything", options)
 {
   using std::placeholders::_1;
 
@@ -32,7 +32,7 @@ MultiDepthAnythingNode::MultiDepthAnythingNode(const rclcpp::NodeOptions & optio
     this->add_on_set_parameters_callback(std::bind(&MultiDepthAnythingNode::onSetParam, this, _1));
 
   node_param_.onnx_path = declare_parameter<std::string>("onnx_path");
-  node_param_.precision = declare_parameter<std::string>("precision", "fp16");
+  node_param_.precision = declare_parameter<std::string>("precision");
 
   // Subscribers (example: front-left & front-right)
   sub_image_fl_ = image_transport::create_subscription(
@@ -40,7 +40,7 @@ MultiDepthAnythingNode::MultiDepthAnythingNode(const rclcpp::NodeOptions & optio
     "raw", rmw_qos_profile_sensor_data);
 
   sub_image_fr_ = image_transport::create_subscription(
-    this, "/camera_image/Cam_FR", std::bind(&MultiDepthAnythingNode::onDataFR, this, _1),
+    this, "/camera_image/Cam_BR", std::bind(&MultiDepthAnythingNode::onDataFR, this, _1),
     "raw", rmw_qos_profile_sensor_data);
 
   // Publishers

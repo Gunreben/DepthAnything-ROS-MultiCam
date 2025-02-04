@@ -1,11 +1,11 @@
 <launch>
   <arg name="onnx_path" default="$(find-pkg-share depth_anything)/data/depth_anything_vitb14.onnx" />
-  <!-- <arg name="precision" default="fp16" />-->
-  <arg name="param_path" default="$(find-pkg-share depth_anything)/config/depth_anything.param.yaml" />
+  <!--<arg name="precision" default="fp16" />-->
+  <arg name="param_path" default="$(find-pkg-share depth_anything)/config/multi_depth_anything.param.yaml" />
 
   <node pkg="depth_anything" exec="multi_depth_anything_node" name="multi_depth_anything" output="screen">
     <param name="onnx_path" value="$(var onnx_path)"/>
-    <!-- <param name="precision" value="$(var precision)"/>-->
+    <!--<param name="precision" value="$(var precision)"/>-->
     <param from="$(var param_path)" />
   </node>
 </launch>
